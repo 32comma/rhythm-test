@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>리듬 게임 패턴 에디터</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>리듬 게임 패턴 에디터</h1>
+        
+        <!-- 오디오 플레이어 -->
+        <audio id="audioPlayer" controls>
+            <source src="BrainFlow.mp3" type="audio/mp3">
+            브라우저가 오디오를 지원하지 않습니다.
+        </audio>
+
+        <div class="button-container">
+            <button id="btn1">1</button>
+            <button id="btn2">2</button>
+            <button id="btn3">3</button>
+            <button id="btn4">4</button>
+        </div>
+
+        <div class="editor">
+            <h2>패턴 생성</h2>
+            <div class="pattern-editor">
+                <input type="number" id="time" placeholder="타이밍 (초)" min="0" step="0.1">
+                <select id="button">
+                    <option value="1">버튼 1</option>
+                    <option value="2">버튼 2</option>
+                    <option value="3">버튼 3</option>
+                    <option value="4">버튼 4</option>
+                </select>
+                <button onclick="addPattern()">추가</button>
+            </div>
+            <h2>생성된 패턴</h2>
+            <pre id="patternDisplay"></pre>
+            <button onclick="savePattern()">패턴 저장</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

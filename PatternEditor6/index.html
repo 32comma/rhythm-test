@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+
+        #track-container {
+            width: 230px;
+            height: 600px;
+            border: 1px solid black;
+            position: absolute;
+            left: 0;
+            top: 80px;
+            overflow-y:scroll;
+        }
+
+        #track {
+            width: 200px;
+            border: 1px solid black;
+            left: 0;
+            top: 80px;
+
+        }
+
+        #target {
+            position: absolute;
+            top:0;
+            width: 200px;
+            height: 10px;
+            border:3px solid red;
+        }
+    </style>
+</head>
+
+<body>
+    <audio src="BrainFlow.mp3" id="audio" controls>
+
+    </audio>
+    <div id="track-container">
+        <div id="track">
+        </div>
+        <div id="target">
+                
+        </div>
+    </div>
+    <script>
+        window.onload = function () {
+            const audio = document.getElementById("audio");
+            const track = document.getElementById("track");
+            audio.onloadedmetadata = function () {
+                console.log(audio.duration);
+                const duration = audio.duration;
+                const totalHeight = duration * 100;
+                style.height = `${totalHeight}px`;
+                // track.style.height = `${audio.duration * 100}px`;
+            };
+            setInterval(() => {
+                const target = document.getElementById("target");
+                if (!audio.paused && !audio.ended) {
+                    const currentTime = audio.currentTime;
+                    target.style.top = `${currentTime * 100}px`;
+                    target.scrollIntoView();
+                }
+            }, 100);
+        };
+    </script>
+</body>
+
+</html>

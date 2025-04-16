@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>48-Line Rhythm Visualizer</title>
+    <style>
+        body {
+            background: #000;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            margin: auto;
+            background: #111;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="file" id="audioFile" accept="audio/*" />
+    <canvas id="canvas" width="880" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const NUM_LINES = 48; // 48개 라인으로 설정
+        const LINE_WIDTH = canvas.width / NUM_LINES;
+        const LINE_Y = canvas.height - 100; // 판정선 위치
+        const NOTE_SPEED = 3; // 노트 속도
+        const NOTE_HEIGHT = 6; // 노트 높이 (더 작은 크기)
+        const NOTE_WIDTH = 8; // 노트 너비 (간격을 좁혀서 이산적 느낌을 줌)
+
+        const notes = Array.from({ length: NUM_LINES }, () => []); // 각 라인의 노트 배열
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048; // 주파수 분석 크기
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        function createNote(lineIndex) {
+            notes[lineIndex].push({ y: 0, created: true }); // 노트는 처음에 한 번만 생성
+        }
+
+        function updateNotes() {
+            for (let i = 0; i < NUM_LINES; i++) {
+                for (let note of notes[i]) {
+                    if (note.created) {
+                        note.y += NOTE_SPEED; // 노트가 내려옴
+                    }
+
+                    // 노트가 판정선에 도달했을 때
+                    if (note.y >= LINE_Y && note.y <= LINE_Y + NOTE_HEIGHT) {
+                        note.created = false; // 노트가 판정선을 지나면 더 이상 움직이지 않음
+                    }
+
+                    // 화면을 벗어나면 노트 삭제
+                    if (note.y > canvas.height) {
+                        notes[i] = notes[i].filter(n => n !== note);
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 판정선 그리기
+            ctx.fillStyle = '#444';
+            ctx.fillRect(0, LINE_Y, canvas.width, NOTE_HEIGHT);
+
+            // 노트 그리기
+            for (let i = 0; i < NUM_LINES; i++) {
+                ctx.fillStyle = `hsl(${(i / NUM_LINES) * 360}, 100%, 60%)`;
+                for (let note of notes[i]) {
+                    ctx.fillRect(i * LINE_WIDTH + (LINE_WIDTH - NOTE_WIDTH) / 2, note.y, NOTE_WIDTH, NOTE_HEIGHT); // 더 좁고 이산적인 노트
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            analyser.getByteFrequencyData(dataArray);
+
+            const bandSize = Math.floor(bufferLength / NUM_LINES);
+
+            for (let i = 0; i < NUM_LINES; i++) {
+                let sum = 0;
+                for (let j = i * bandSize; j < (i + 1) * bandSize; j++) {
+                    sum += dataArray[j];
+                }
+                const avg = sum / bandSize;
+
+                // 주파수 값이 특정 임계값을 넘으면 해당 라인에 노트를 생성
+                if (avg > 100) { 
+                    createNote(i);
+                }
+            }
+
+            updateNotes();
+            draw();
+        }
+
+        document.getElementById('audioFile').addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                audioCtx.decodeAudioData(e.target.result, function (buffer) {
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                    source.start();
+                    animate();
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+
+</html>

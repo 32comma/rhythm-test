@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rhythm game pattern editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        .game-container {
+            margin-top: 50px;
+        }
+
+        .audio-player {
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        .timeline {
+            width: 200px;
+            height: 600px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            position: relative;
+            background-color: #f0f0f0;
+        }
+
+        .marker {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: red;
+        }
+
+        .button-container button {
+            width: 40px;
+            height: 40px;
+            margin: 5px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .editor {
+            margin-top: 30px;
+        }
+
+        input,
+        select {
+            margin: 5px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        pre {
+            text-align: left;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .pattern {
+            position: absolute;
+            background-color: rgba(0, 255, 0, 0.7);
+            border-radius: 5px;
+            font-size: 10px;
+            width: 50px;
+            cursor: pointer;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <h1>pattern editor</h1>
+
+        <!-- 오디오 플레이어 -->
+        <audio id="audioPlayer" controls>
+            <source src="BrainFlow.mp3" type="audio/mp3">
+            브라우저가 오디오를 지원하지 않습니다.
+        </audio>
+
+        <!-- 패턴을 추가할 수 있는 타임라인 -->
+        <div id="timeline" class="timeline">
+            <div id="marker" class="marker"></div>
+        </div>
+
+        <div class="button-container">
+            <button id="btn1">1</button>
+            <button id="btn2">2</button>
+            <button id="btn3">3</button>
+            <button id="btn4">4</button>
+        </div>
+
+        <div class="editor">
+            <h2>패턴 생성</h2>
+            <div class="pattern-editor">
+                <input type="number" id="time" placeholder="타이밍 (초)" min="0" step="0.1">
+                <select id="button">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+                <button onclick="addPattern()">추가</button>
+            </div>
+            <h2>생성된 패턴</h2>
+            <pre id="patternDisplay"></pre>
+            <button onclick="savePattern()">패턴 저장</button>
+        </div>
+    </div>
+
+    <script>
+        let pattern = [];
+        let audioPlayer = document.getElementById('audioPlayer');
+        let startTime = null;
+        let timeline = document.getElementById('timeline');
+        let marker = document.getElementById('marker');
+
+        // 페이지 로드 시 타임라인을 맨 아래로 스크롤
+        window.onload = function () {
+            const audioDuration = audioPlayer.duration;
+        };
+
+        audioPlayer.onplay = function () {
+            startTime = audioPlayer.currentTime;
+            updateMarker();
+        };
+
+        audioPlayer.ontimeupdate = function () {
+            updateMarker();
+            updatePatternPositions();
+        };
+
+        // 타임라인에 따라 마커 위치 업데이트
+        function updateMarker() {
+            if (startTime !== null) {
+                const currentTime = audioPlayer.currentTime - startTime;
+                const duration = audioPlayer.duration;
+                const timelineHeight = timeline.offsetHeight;
+                const position = (currentTime / duration) * timelineHeight;
+
+                marker.style.top = `${position}px`;
+
+                // 타임라인이 스크롤되는 위치를 자동으로 맞추기
+                const markerOffset = marker.offsetTop;
+                const containerHeight = timeline.clientHeight;
+                if (markerOffset > containerHeight / 2) {
+                    timeline.scrollTop = markerOffset - containerHeight / 2;
+                }
+            }
+        }
+
+        // 패턴들의 위치를 업데이트
+        function updatePatternPositions() {
+            const patternDivs = document.querySelectorAll('.pattern');
+            patternDivs.forEach((div) => {
+                const patternTime = parseFloat(div.getAttribute('data-time'));
+                const position = (patternTime / audioPlayer.duration) * timeline.offsetHeight;
+                div.style.top = `${position}px`;
+            });
+        }
+
+        function addPattern() {
+            if (startTime === null) {
+                alert("음악을 먼저 재생해주세요!");
+                return;
+            }
+
+            const time = audioPlayer.currentTime - startTime; // 음악 시작 이후 시간
+            const button = document.getElementById('button').value;
+
+            if (time && button) {
+                const patternObject = {
+                    time: time.toFixed(2),
+                    button: parseInt(button)
+                };
+                pattern.push(patternObject);
+                displayPattern();
+                addPatternToTimeline(patternObject);
+            } else {
+                alert("버튼을 선택해 주세요!");
+            }
+        }
+
+        function displayPattern() {
+            const patternDisplay = document.getElementById('patternDisplay');
+            patternDisplay.textContent = JSON.stringify(pattern, null, 2);
+        }
+
+        function addPatternToTimeline(patternObject) {
+            const patternDiv = document.createElement('div');
+            patternDiv.classList.add('pattern');
+            patternDiv.setAttribute('data-time', patternObject.time); // 데이터 타임 속성 추가
+
+            // 패턴의 초기 위치 설정
+            patternDiv.style.top = `${(patternObject.time / audioPlayer.duration) * timeline.offsetHeight}px`;
+
+            if (patternObject.button == 1) {
+                patternDiv.style.left = '0px';
+            } else if (patternObject.button == 2) {
+                patternDiv.style.left = '50px';
+            } else if (patternObject.button == 3) {
+                patternDiv.style.left = '100px';
+            } else if (patternObject.button == 4) {
+                patternDiv.style.left = '150px';
+            }
+
+            patternDiv.textContent = `${patternObject.button}`;
+            patternDiv.addEventListener('click', () => {
+                alert(`버튼 ${patternObject.button}이 ${patternObject.time}초에 추가되었습니다.`);
+            });
+
+            timeline.appendChild(patternDiv);
+        }
+
+        function savePattern() {
+            const blob = new Blob([JSON.stringify(pattern, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'pattern.json';
+            link.click();
+        }
+
+        // 버튼 클릭 시 선택된 버튼 값을 업데이트
+        document.getElementById('btn1').addEventListener('click', () => {
+            document.getElementById('button').value = 1;
+        });
+
+        document.getElementById('btn2').addEventListener('click', () => {
+            document.getElementById('button').value = 2;
+        });
+
+        document.getElementById('btn3').addEventListener('click', () => {
+            document.getElementById('button').value = 3;
+        });
+
+        document.getElementById('btn4').addEventListener('click', () => {
+            document.getElementById('button').value = 4;
+        });
+
+        // progress bar를 클릭하면 음악과 타임라인의 위치가 조정되도록 설정
+        timeline.addEventListener('click', function (event) {
+            const containerHeight = timeline.offsetHeight;
+            const clickPosition = event.offsetY;
+
+            // 클릭한 위치에 해당하는 음악 시간 계산
+            const clickedTime = (clickPosition / containerHeight) * audioPlayer.duration;
+
+            // 음악 재생 위치 설정
+            audioPlayer.currentTime = clickedTime + startTime;  // 음악이 정확한 위치로 이동하도록 조정
+
+            // 마커와 타임라인의 위치를 다시 업데이트
+            updateMarker();
+        });
+    </script>
+
+</body>
+
+</html>

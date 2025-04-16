@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>4-Button Piano Visualizer</title>
+    <style>
+        body {
+            background: #000;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .piano {
+            display: flex;
+            flex-direction: row;
+        }
+        .key {
+            width: 60px;
+            height: 150px;
+            margin: 1px;
+            background: white;
+            border: 1px solid #ccc;
+            position: relative;
+            cursor: pointer;
+        }
+        .blackKey {
+            width: 40px;
+            height: 100px;
+            background: black;
+            position: absolute;
+            left: 20px;
+            z-index: 2;
+        }
+        .highlight {
+            background: #f00; /* 강조 색 */
+        }
+    </style>
+</head>
+<body>
+    <div class="piano" id="piano">
+        <!-- 4개의 피아노 키만 표시 -->
+    </div>
+
+    <script>
+        const pianoContainer = document.getElementById('piano');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // 4개의 피아노 주파수 (임의로 선택된 C, D, E, F)
+        const frequencies = [
+            261.63,  // C4
+            293.66,  // D4
+            329.63,  // E4
+            349.23   // F4
+        ];
+
+        // 4개의 피아노 버튼 생성
+        for (let i = 0; i < 4; i++) {
+            const key = document.createElement('div');
+            key.classList.add('key');
+            key.dataset.frequency = frequencies[i];
+
+            // 검은 키는 필요 없으므로 생략합니다.
+            key.addEventListener('click', () => playNote(frequencies[i], key));
+
+            pianoContainer.appendChild(key);
+        }
+
+        // 피아노 키를 눌렀을 때 주파수 사운드 재생 및 강조
+        function playNote(frequency, key) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            oscillator.start();
+
+            // 사운드 종료 후 리소스 정리
+            oscillator.stop(audioCtx.currentTime + 0.5); // 0.5초 후에 멈추기
+
+            // 노트 강조 (시각적으로)
+            highlightKey(key);
+        }
+
+        // 강조음 효과
+        function highlightKey(key) {
+            // 모든 키 강조 제거
+            const allKeys = document.querySelectorAll('.key');
+            allKeys.forEach(k => k.classList.remove('highlight'));
+
+            // 클릭된 키에 강조음 적용
+            key.classList.add('highlight');
+
+            // 강조음 효과 지속 시간 (0.3초 후 강조 해제)
+            setTimeout(() => key.classList.remove('highlight'), 300);
+        }
+    </script>
+</body>
+</html>

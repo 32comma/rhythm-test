@@ -47,21 +47,35 @@
                 this.height = 20;
             }
             update() {
-                this.y += 1;
+                this.y += 3;
+
             }
-            draw(){
-                ctx.fillStyle 
+            draw() {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
             }
         }
-        function move() {
+        let note1 = new Note(0, 0);
+        let note2 = new Note(40, 100);
+        let note3 = new Note(80, 200);
+        let note4 = new Note(120, 300);
+        let notes = [];
+        notes.push();
+        function test() {
             //clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, y++, 100, 100);
-            y = y % 600;
-            requestAnimationFrame(move);
+
+            note1.draw();
+            note1.update();
+            note2.draw();
+            note2.update();
+            note3.draw();
+            note3.update();
+            note4.draw();
+            note4.update();
+            requestAnimationFrame(test);
         }
-        requestAnimationFrame(move)
+        requestAnimationFrame(test);
     </script>
 </body>
 
