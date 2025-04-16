@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        #timeline {
+            height: auto;
+            width: 200px;
+            border: 1px solid black;
+            position: relative;
+        }
+
+        #cursor {
+            position: absolute;
+            width: 100%;
+            background-color: chartreuse;
+            height: 10px;
+            border: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <audio src="BrainFlow.mp3" id="audio" controls>
+
+    </audio>
+    <div id="timeline">
+        <div id="cursor">
+
+        </div>
+    </div>
+    <script>
+        const audio = document.getElementById("audio");
+        const cursor = document.getElementById("cursor");
+        const timeline = document.getElementById("timeline");
+        let stepSize = 7;
+
+        function setCursorPosition() {
+            audio.onloadeddata = function () {
+                timeline.style.height = `${audio.duration * stepSize}px`;
+                updateCursor();
+            };
+
+            audio.addEventListener('seeking', updateCursor);
+            audio.addEventListener('seeked', updateCursor);
+        }
+
+        function updateCursor() {
+            cursor.style.top = `${(audio.duration - audio.currentTime) * stepSize}px`;
+        }
+
+        function setTimelineHeight() {
+            audio.onloadeddata = function () {
+                timeline.style.height = `${audio.duration * stepSize}px`;
+            };
+        }
+
+        function init() {
+            setTimelineHeight();
+            setCursorPosition();
+        }
+
+        function run() {
+            if (!audio.paused && !audio.ended) {
+                updateCursor();
+            }
+            requestAnimationFrame(run);
+        }
+
+        timeline.addEventListener('click', (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const clickY = e.clientY - rect.top; // 클릭 위치
+            const newTime = audio.duration - (clickY / stepSize);
+            audio.currentTime = Math.max(0, Math.min(audio.duration, newTime));
+            updateCursor();
+        });
+
+        requestAnimationFrame(run);
+        init();
+    </script>
+
+</body>
+
+</html>

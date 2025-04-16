@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline with Drag Cursor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body,
+        html {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+
+        #timeline {
+            width: 200px;
+            border: 1px solid black;
+            position: absolute;
+            left: 100px;
+            bottom: 100px;
+
+        }
+
+        #cursor {
+            position: absolute;
+            width: 100%;
+            height: 10px;
+            background-color: chartreuse;
+            cursor: pointer;
+        }
+
+        .bar {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: gray;
+        }
+
+        .sub-bar {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background-color: lightgray;
+        }
+
+        #audio {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+        }
+
+        #test {
+            border: 1px solid black;
+            position: fixed;
+            right: 20%;
+            top: 10%;
+            width: 200px;
+            height: 600px;
+
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.5/Tone.js"></script>
+</head>
+
+<body>
+    <audio src="BrainFlow.mp3" id="audio" controls></audio>
+    <div id="timeline">
+        <div id="cursor"></div>
+    </div>
+    <div id="test">
+
+    </div>
+    <script>
+
+
+
+        const audio = document.getElementById("audio");
+        const cursor = document.getElementById("cursor");
+        const timeline = document.getElementById("timeline");
+        let stepSize = 7;
+        const barDuration = 4.5; // 각 마디의 길이
+        const beatsPerBar = 4;  // 4/4박자에서 박자 수
+
+        function createBars() {
+            const numBars = Math.floor(audio.duration / barDuration);
+            for (let i = 0; i < numBars; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.top = `${(audio.duration - (i * barDuration)) * stepSize}px`;
+                timeline.appendChild(bar);
+
+                for (let j = 1; j < beatsPerBar; j++) {
+                    const subBar = document.createElement('div');
+                    subBar.className = 'sub-bar';
+                    subBar.style.top = `${(audio.duration - (i * barDuration) - (j * barDuration / beatsPerBar)) * stepSize}px`;
+                    timeline.appendChild(subBar);
+                }
+            }
+        }
+
+        function updateCursor() {
+            cursor.style.top = `${(audio.duration - audio.currentTime) * stepSize}px`;
+
+        }
+
+        function setTimelineHeight() {
+            audio.onloadeddata = function () {
+                timeline.style.height = `${audio.duration * stepSize}px`;
+                createBars();
+                updateCursor();
+            };
+        }
+
+        function init() {
+            setTimelineHeight();
+        }
+
+        function run() {
+            if (!audio.paused && !audio.ended) {
+                updateCursor();
+            }
+            requestAnimationFrame(run);
+        }
+
+        timeline.addEventListener('click', (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const clickY = e.clientY - rect.top;
+            const newTime = audio.duration - (clickY / stepSize);
+            audio.currentTime = Math.max(0, Math.min(audio.duration, newTime));
+            updateCursor();
+        });
+
+        cursor.addEventListener('mousedown', (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const initialOffsetY = e.clientY - rect.top;
+
+            const onMouseMove = (moveEvent) => {
+                const moveY = moveEvent.clientY - rect.top;
+                const newTime = audio.duration - (moveY / stepSize);
+                audio.currentTime = Math.max(0, Math.min(audio.duration, newTime));
+                updateCursor();
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        requestAnimationFrame(run);
+        init();
+    </script>
+</body>
+
+</html>

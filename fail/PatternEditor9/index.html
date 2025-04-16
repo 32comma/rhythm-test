@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timeline with Drag Cursor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #test {
+            position: fixed;
+            top: 0;
+            right: 0;
+            border: 1px solid black;
+            width: 200px;
+            height: 800px;
+
+        }
+
+        #timeline {
+            width: 200px;
+            border: 1px solid black;
+            position: absolute;
+            left: 100px;
+            top: 100px;
+
+        }
+
+        #cursor {
+            position: absolute;
+            width: 100%;
+            height: 10px;
+            background-color: chartreuse;
+            cursor: pointer;
+        }
+
+        .bar {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: gray;
+        }
+
+        .sub-bar {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background-color: lightgray;
+        }
+
+        .line {
+            position: absolute;
+            width: 1px;
+            background-color: black;
+            height: 100%;
+        }
+
+        #audio {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+        }
+
+        .note {
+            position: absolute;
+            width: 25%;
+            height: 5px;
+            border: 1px solid black;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 5px;
+            color: white;
+            background-color: gray;
+            font-size: 10px;
+        }
+
+        #test {
+            border: 1px solid black;
+            position: fixed;
+            right: 20%;
+            top: 10%;
+            width: 200px;
+            height: 600px;
+        }
+
+        #controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="test">
+        <div class="line" style="left: 0%;"></div>
+        <div class="line" style="left: 25%;"></div>
+        <div class="line" style="left: 50%;"></div>
+        <div class="line" style="left: 75%;"></div>
+    </div>
+    <audio src="BrainFlow.mp3" id="audio" controls></audio>
+    <div id="controls">
+        <button onclick="downloadPattern()">💾 Save pattern.json</button>
+        <input type="file" accept=".json" id="fileInput" onchange="uploadPattern(event)" style="display: none;" />
+    </div>
+
+    <div id="timeline">
+        <div id="cursor"></div>
+        <div class="line" style="left: 0%;"></div>
+        <div class="line" style="left: 25%;"></div>
+        <div class="line" style="left: 50%;"></div>
+        <div class="line" style="left: 75%;"></div>
+    </div>
+
+    <script>
+        const audio = document.getElementById("audio");
+        const cursor = document.getElementById("cursor");
+        const timeline = document.getElementById("timeline");
+
+        const stepSize = 60;
+        const barDuration = 4.5;
+        const beatsPerBar = 16;
+        function getNoteLeftPosition(columnIndex) {
+            const leftPositions = [0, 50, 100, 150]; // Adjust these as per your requirement
+            return leftPositions[columnIndex];
+        }
+        function createBars() {
+            const numBars = Math.floor(audio.duration / barDuration);
+            for (let i = 0; i < numBars; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.top = `${(audio.duration - (i * barDuration)) * stepSize}px`;
+                timeline.appendChild(bar);
+
+                for (let j = 1; j < beatsPerBar; j++) {
+                    const subBar = document.createElement('div');
+                    subBar.className = 'sub-bar';
+                    subBar.style.top = `${(audio.duration - (i * barDuration) - (j * barDuration / beatsPerBar)) * stepSize}px`;
+                    timeline.appendChild(subBar);
+                }
+            }
+        }
+
+        function updateCursor() {
+            cursor.style.top = `${(audio.duration - audio.currentTime) * stepSize}px`;
+        }
+
+        function setTimelineHeight() {
+            audio.onloadeddata = function () {
+                timeline.style.height = `${audio.duration * stepSize}px`;
+                createBars();
+                updateCursor();
+            };
+        }
+
+        function init() {
+            setTimelineHeight();
+            loadPattern(); // Automatically load pattern.json on page load
+        }
+
+        function loadPattern() {
+            // Try loading the pattern.json if available
+            fetch('pattern.json')  // Assuming the file is located in the same directory
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Pattern file not found');
+                    }
+                })
+                .then(data => {
+                    importNotes(JSON.stringify(data));  // Import the notes
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+
+        function run() {
+            if (!audio.paused && !audio.ended) {
+                updateCursor();
+            }
+            requestAnimationFrame(run);
+        }
+
+        timeline.addEventListener('click', (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const clickY = e.clientY - rect.top;
+            const newTime = audio.duration - (clickY / stepSize);
+            audio.currentTime = Math.max(0, Math.min(audio.duration, newTime));
+            updateCursor();
+        });
+
+        cursor.addEventListener('mousedown', (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const initialOffsetY = e.clientY - rect.top;
+
+            const onMouseMove = (moveEvent) => {
+                const moveY = moveEvent.clientY - rect.top;
+                const newTime = audio.duration - (moveY / stepSize);
+                audio.currentTime = Math.max(0, Math.min(audio.duration, newTime));
+                updateCursor();
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        timeline.addEventListener("dblclick", (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            const columnWidth = rect.width / 4;
+            const columnIndex = Math.floor(clickX / columnWidth);
+            const noteLeft = getNoteLeftPosition(columnIndex); // Use the adjusted left position
+
+            const clickedTime = audio.duration - (clickY / stepSize);
+
+            const barIndex = Math.floor(clickedTime / barDuration);
+            const beatTime = barDuration / beatsPerBar;
+            const beatIndex = Math.round((clickedTime - barIndex * barDuration) / beatTime);
+            const snappedTime = barIndex * barDuration + beatIndex * beatTime;
+
+            const noteHeight = 5;
+            const snapTop = (audio.duration - snappedTime) * stepSize - noteHeight;
+
+            const existingNote = Array.from(timeline.querySelectorAll(".note")).find(note => {
+                const noteLeftPos = parseFloat(note.style.left);
+                const noteTopPos = parseFloat(note.style.top);
+                return Math.abs(noteLeftPos - noteLeft) < 1 && Math.abs(noteTopPos - snapTop) < 1;
+            });
+
+            if (existingNote) {
+                existingNote.remove();
+            } else {
+                const note = document.createElement("div");
+                note.className = "note";
+                note.style.left = `${noteLeft}px`; // Use the new left position
+                note.style.top = `${snapTop}px`;
+                note.style.backgroundColor = (columnIndex === 0 || columnIndex === 3) ? "yellow" : "blue";
+
+                // Store the time in milliseconds (time)
+                note.dataset.time = (snappedTime * 1000).toFixed(0); // Store time in ms
+
+                // Display the time of the audio in ms on the note
+                const timeDisplay = document.createElement("span");
+                timeDisplay.textContent = (snappedTime * 1000).toFixed(0) + "ms"; // format as ms
+                note.appendChild(timeDisplay);
+
+                timeline.appendChild(note);
+            }
+        });
+
+        // Modify exportNotes to reflect new left position
+        function exportNotes() {
+            return JSON.stringify(Array.from(timeline.querySelectorAll(".note")).map(note => {
+                const leftPosition = parseFloat(note.style.left);
+                // Convert left position to 1, 2, 3, or 4
+                const columnIndex = leftPosition === 0 ? 1 : leftPosition === 50 ? 2 : leftPosition === 100 ? 3 : 4;
+                return {
+                    top: parseFloat(note.style.top),
+                    left: columnIndex,  // Save the column index as 1, 2, 3, or 4
+                    // color: note.style.backgroundColor,
+                    time: parseInt(note.dataset.time || 0) // Save the time in milliseconds
+                };
+            }), null, 2);
+        }
+
+        // 🔽 JSON import
+        function importNotes(json) {
+            timeline.querySelectorAll(".note").forEach(note => note.remove());
+            JSON.parse(json).forEach(data => {
+                const note = document.createElement("div");
+                note.className = "note";
+                note.style.top = `${data.top}px`;
+
+                // Convert left index (1, 2, 3, or 4) back to 0, 50, 100, or 150
+                const leftPosition = data.left === 1 ? 0 : data.left === 2 ? 50 : data.left === 3 ? 100 : 150;
+                note.style.left = `${leftPosition}px`;
+
+                // note.style.backgroundColor = data.color;
+                note.dataset.time = data.time; // Import the time
+                const timeDisplay = document.createElement("span");
+                timeDisplay.textContent = data.time + "ms"; // Display time in ms
+                note.appendChild(timeDisplay);
+                timeline.appendChild(note);
+            });
+        }
+
+        // 🔽 Save to JSON (pattern.json)
+        function downloadPattern() {
+            const blob = new Blob([exportNotes()], { type: "application/json" }); // Create Blob from notes
+            const url = URL.createObjectURL(blob); // Create object URL
+            const a = document.createElement("a"); // Create anchor element
+            a.href = url; // Set URL to Blob
+            a.download = "pattern.json"; // Set download filename
+            a.click(); // Trigger download
+            URL.revokeObjectURL(url); // Clean up
+        }
+        requestAnimationFrame(run);
+        init();
+    </script>
+</body>
+
+</html>
