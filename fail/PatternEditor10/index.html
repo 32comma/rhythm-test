@@ -20,13 +20,13 @@
         }
 
         #test {
-            position: fixed;
-            top: 0;
-            right: 0;
             border: 1px solid black;
+            position: fixed;
+            right: 20%;
+            top: 10%;
             width: 200px;
-            height: 800px;
-
+            height: 600px;
+            overflow: hidden;
         }
 
         #timeline {
@@ -35,7 +35,6 @@
             position: absolute;
             left: 100px;
             top: 100px;
-
         }
 
         #cursor {
@@ -87,15 +86,6 @@
             font-size: 10px;
         }
 
-        #test {
-            border: 1px solid black;
-            position: fixed;
-            right: 20%;
-            top: 10%;
-            width: 200px;
-            height: 600px;
-        }
-
         #controls {
             position: fixed;
             top: 20px;
@@ -131,14 +121,17 @@
         const audio = document.getElementById("audio");
         const cursor = document.getElementById("cursor");
         const timeline = document.getElementById("timeline");
+        const test = document.getElementById("test");
 
         const stepSize = 60;
         const barDuration = 4.5;
         const beatsPerBar = 16;
+
         function getNoteLeftPosition(columnIndex) {
-            const leftPositions = [0, 50, 100, 150]; // Adjust these as per your requirement
+            const leftPositions = [0, 50, 100, 150];
             return leftPositions[columnIndex];
         }
+
         function createBars() {
             const numBars = Math.floor(audio.duration / barDuration);
             for (let i = 0; i < numBars; i++) {
@@ -170,12 +163,11 @@
 
         function init() {
             setTimelineHeight();
-            loadPattern(); // Automatically load pattern.json on page load
+            loadPattern();
         }
 
         function loadPattern() {
-            // Try loading the pattern.json if available
-            fetch('pattern.json')  // Assuming the file is located in the same directory
+            fetch('pattern.json')
                 .then(response => {
                     if (response.ok) {
                         return response.json();
@@ -184,7 +176,7 @@
                     }
                 })
                 .then(data => {
-                    importNotes(JSON.stringify(data));  // Import the notes
+                    importNotes(JSON.stringify(data));
                 })
                 .catch(error => {
                     console.error(error);
@@ -194,8 +186,28 @@
         function run() {
             if (!audio.paused && !audio.ended) {
                 updateCursor();
+                animateNotes();
             }
             requestAnimationFrame(run);
+        }
+
+        function animateNotes() {
+            const currentTime = audio.currentTime * 1000;
+            const testHeight = test.clientHeight;
+            const fallingDuration = 2000; // ms
+
+            document.querySelectorAll("#test .note").forEach(note => {
+                const noteTime = parseFloat(note.dataset.time);
+                const diff = noteTime - currentTime;
+
+                if (diff < 0 || diff > fallingDuration) {
+                    note.style.display = "none";
+                } else {
+                    note.style.display = "flex";
+                    const progress = 1 - (diff / fallingDuration);
+                    note.style.top = `${progress * testHeight}px`;
+                }
+            });
         }
 
         timeline.addEventListener('click', (e) => {
@@ -233,7 +245,7 @@
 
             const columnWidth = rect.width / 4;
             const columnIndex = Math.floor(clickX / columnWidth);
-            const noteLeft = getNoteLeftPosition(columnIndex); // Use the adjusted left position
+            const noteLeft = getNoteLeftPosition(columnIndex);
 
             const clickedTime = audio.duration - (clickY / stepSize);
 
@@ -256,73 +268,67 @@
             } else {
                 const note = document.createElement("div");
                 note.className = "note";
-                note.style.left = `${noteLeft}px`; // Use the new left position
+                note.style.left = `${noteLeft}px`;
                 note.style.top = `${snapTop}px`;
                 note.style.backgroundColor = (columnIndex === 0 || columnIndex === 3) ? "yellow" : "blue";
+                note.dataset.time = (snappedTime * 1000).toFixed(0);
 
-                // Store the time in milliseconds (time)
-                note.dataset.time = (snappedTime * 1000).toFixed(0); // Store time in ms
-
-                // Display the time of the audio in ms on the note
                 const timeDisplay = document.createElement("span");
-                timeDisplay.textContent = (snappedTime * 1000).toFixed(0) + "ms"; // format as ms
+                timeDisplay.textContent = (snappedTime * 1000).toFixed(0) + "ms";
                 note.appendChild(timeDisplay);
-
                 timeline.appendChild(note);
+
+                // 👉 Create corresponding note in test area for falling
+                const fallingNote = note.cloneNode(true);
+                fallingNote.style.top = "0px";
+                fallingNote.style.left = `${noteLeft}px`;
+                test.appendChild(fallingNote);
             }
         });
 
-        // Modify exportNotes to reflect new left position
         function exportNotes() {
             return JSON.stringify(Array.from(timeline.querySelectorAll(".note")).map(note => {
                 const leftPosition = parseFloat(note.style.left);
-                // Convert left position to 1, 2, 3, or 4
                 const columnIndex = leftPosition === 0 ? 1 : leftPosition === 50 ? 2 : leftPosition === 100 ? 3 : 4;
                 return {
                     top: parseFloat(note.style.top),
-                    left: columnIndex,  // Save the column index as 1, 2, 3, or 4
-                    // color: note.style.backgroundColor,
-                    time: parseInt(note.dataset.time || 0) // Save the time in milliseconds
+                    left: columnIndex,
+                    time: parseInt(note.dataset.time || 0)
                 };
             }), null, 2);
         }
 
-        // 🔽 JSON import
         function importNotes(json) {
             timeline.querySelectorAll(".note").forEach(note => note.remove());
+            test.querySelectorAll(".note").forEach(note => note.remove());
             JSON.parse(json).forEach(data => {
                 const note = document.createElement("div");
                 note.className = "note";
                 note.style.top = `${data.top}px`;
-
-                // Convert left index (1, 2, 3, or 4) back to 0, 50, 100, or 150
                 const leftPosition = data.left === 1 ? 0 : data.left === 2 ? 50 : data.left === 3 ? 100 : 150;
                 note.style.left = `${leftPosition}px`;
-
-                // note.style.backgroundColor = data.color;
-                note.dataset.time = data.time; // Import the time
+                note.dataset.time = data.time;
                 const timeDisplay = document.createElement("span");
-                timeDisplay.textContent = data.time + "ms"; // Display time in ms
+                timeDisplay.textContent = data.time + "ms";
                 note.appendChild(timeDisplay);
                 timeline.appendChild(note);
-            });
-        }
-        function importNotesToRightGear(){
-            JSON.parse(json).forEach(data => {
-                console.log(data);
+
+                const fallingNote = note.cloneNode(true);
+                fallingNote.style.top = "0px";
+                test.appendChild(fallingNote);
             });
         }
 
-        // 🔽 Save to JSON (pattern.json)
         function downloadPattern() {
-            const blob = new Blob([exportNotes()], { type: "application/json" }); // Create Blob from notes
-            const url = URL.createObjectURL(blob); // Create object URL
-            const a = document.createElement("a"); // Create anchor element
-            a.href = url; // Set URL to Blob
-            a.download = "pattern.json"; // Set download filename
-            a.click(); // Trigger download
-            URL.revokeObjectURL(url); // Clean up
+            const blob = new Blob([exportNotes()], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "pattern.json";
+            a.click();
+            URL.revokeObjectURL(url);
         }
+
         requestAnimationFrame(run);
         init();
     </script>
